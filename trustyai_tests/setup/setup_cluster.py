@@ -219,6 +219,5 @@ if __name__ == "__main__":
     )
     parser.add_argument("--artifact_dir", help="Directory where test artifacts are stored.", default="/tmp/")
     args = parser.parse_args()
-    print(args)
 
     setup_cluster(args)
