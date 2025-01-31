@@ -833,7 +833,7 @@ def log_namespace_pods(artifacts_dir, namespace):
     """Log yaml and summary for all pods in provided namespace to artifacts dir"""
 
     pod_log = ""
-    fmt_str = "{:<100} {:>git a10} {:>10}\n"
+    fmt_str = "{:<100} {:>10} {:>10}\n"
     pod_status_log = fmt_str.format("NAME", "READY", "STATUS")
     for pod in Pod.get(namespace=namespace, timeout=3):
         pod_log += yaml.dump(pod.instance.to_dict())
