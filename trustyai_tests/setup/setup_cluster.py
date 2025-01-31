@@ -156,7 +156,7 @@ def install_datascience_cluster(client, trustyai_manifests_url):
 
     dsc = DataScienceCluster(client=client, yaml_file=StringIO(config))
     dsc.deploy()
-    dsc.wait_for_status(status=DataScienceCluster.Status.READY)
+    dsc.wait_for_status(status=DataScienceCluster.Status.READY, timeout=300)
 
 
 # === MAIN =========================================================================================
@@ -220,4 +220,6 @@ if __name__ == "__main__":
     parser.add_argument("--artifact_dir", help="Directory where test artifacts are stored.", default="/tmp/")
     args = parser.parse_args()
 
-    setup_cluster(args)
+    #setup_cluster(args)
+
+    install_datascience_cluster(get_client(), args.trustyai_manifests_url)

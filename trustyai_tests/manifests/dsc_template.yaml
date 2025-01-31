@@ -39,7 +39,7 @@ spec:
       managementState: Removed
     trustyai:
       managementState: Managed
-      devflags:
+      devFlags:
         manifests:
           - contextDir: config
             sourcePath: ''
