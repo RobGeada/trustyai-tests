@@ -30,7 +30,7 @@ def wait_for_catalog_sources(operator_data):
     header("Waiting for Catalog Sources")
 
     client = get_client()
-    catalog_sources = {o['catalogSource'] for o in operator_data}
+    catalog_sources = {o["catalogSource"] for o in operator_data}
 
     for catalog_source in catalog_sources:
         tries = 0
@@ -67,8 +67,8 @@ def wait_for_package_manifests(operator_data):
                 previous_return_list = package_manifests
 
             for package_manifest in package_manifests:
-                if package_manifest.name == operator['name']:
-                    logger.info("{} package manifest found".format(operator['name']))
+                if package_manifest.name == operator["name"]:
+                    logger.info("{} package manifest found".format(operator["name"]))
                     found = True
                     break
 
@@ -76,8 +76,8 @@ def wait_for_package_manifests(operator_data):
                 time.sleep(RECHECK_INTERVAL)
 
             if tries > 900 // RECHECK_INTERVAL:
-                logger.error("Package Manifests for {} not found".format(operator['name']))
-                raise TimeoutError("Package Manifests for {} not found".format(operator['name']))
+                logger.error("Package Manifests for {} not found".format(operator["name"]))
+                raise TimeoutError("Package Manifests for {} not found".format(operator["name"]))
 
             tries += 1
 
@@ -91,13 +91,13 @@ def install_operators(operator_data):
         install_operator(
             admin_client=client,
             target_namespaces=[],
-            name=operator['name'],
-            channel=operator['channel'],
-            source=operator['catalogSource'],
-            operator_namespace=operator['namespace'],
+            name=operator["name"],
+            channel=operator["channel"],
+            source=operator["catalogSource"],
+            operator_namespace=operator["namespace"],
             timeout=600,
             install_plan_approval="Manual",
-            starting_csv="{}.v{}".format(operator['name'], operator['version'])
+            starting_csv="{}.v{}".format(operator["name"], operator["version"]),
         )
 
 
@@ -108,7 +108,7 @@ def verify_operator_running(operator_data):
     client = get_client()
     previous_return_list = None
     for operator in operator_data:
-        for target_pod_name in operator['correspondingPods']:
+        for target_pod_name in operator["correspondingPods"]:
             tries = 0
             found = False
 
@@ -117,12 +117,13 @@ def verify_operator_running(operator_data):
                 if tries == 0 and previous_return_list is not None:
                     running_pods = previous_return_list
                 else:
-                    running_pods = list(Pod.get(dyn_client=client, namespace=operator['namespace']))
+                    running_pods = list(Pod.get(dyn_client=client, namespace=operator["namespace"]))
                     previous_return_list = running_pods
 
                 for pod in running_pods:
-                    num_running_containers = sum(
-                        [1 for container in pod.exists.status['containerStatuses'] if container['started']])
+                    num_running_containers = sum([
+                        1 for container in pod.exists.status["containerStatuses"] if container["started"]
+                    ])
 
                     # check if pod name matches and is running
                     if target_pod_name in pod.name and num_running_containers == 1:
@@ -167,7 +168,7 @@ def install_datascience_cluster(trustyai_manifests_url):
 def setup_cluster(operator_config_yaml, trustyai_manifests_url):
     # load config info
     try:
-        with (open(operator_config_yaml, 'r') as f):
+        with open(operator_config_yaml, "r") as f:
             operator_data = yaml.load(f, yaml.Loader)
     except FileNotFoundError as e:
         logger.error("Operator config yaml {} not found:".format(operator_config_yaml))
