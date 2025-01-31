@@ -174,7 +174,7 @@ def setup_cluster(args):
     client = get_client()
 
     # make sure cluster is ready for operator installation
-    if args.install_operators:
+    if not args.skip_operators_installation:
         wait_for_catalog_sources(client, operator_data)
         wait_for_package_manifests(client, operator_data)
 
@@ -182,7 +182,7 @@ def setup_cluster(args):
         install_operators(client, operator_data)
         verify_operator_running(client, operator_data)
 
-    if args.install_dsc:
+    if args.skip_dsc_installation:
         # create odh namespace
         create_odh_namespace(client)
 
@@ -206,20 +206,19 @@ if __name__ == "__main__":
         default=DEFAULT_REPO,
     )
     parser.add_argument(
-        "--install_operators",
-        help="Whether to install the prerequisite operators. Set to false if they are already "
+        "--skip_operators_installation",
+        help="Whether to skip the installation the prerequisite operators. Use this flag if they are already "
         "installed on your cluster.",
-        default=True,
-        action="store_false",
+        action="store_true",
     )
     parser.add_argument(
-        "--install_dsc",
-        help="Whether to install the ODH DataScienceCluster. Set to false if you already have a "
+        "--skip_dsc_installation",
+        help="Whether to skip the installation of the ODH DataScienceCluster. Use this flag if you already have a "
         "DataScienceCluster running.",
-        default=True,
-        action="store_false",
+        action="store_true",
     )
     parser.add_argument("--artifact_dir", help="Directory where test artifacts are stored.", default="/tmp/")
     args = parser.parse_args()
+    print(args)
 
     setup_cluster(args)
