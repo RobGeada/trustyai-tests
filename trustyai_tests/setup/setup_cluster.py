@@ -1,18 +1,26 @@
-from ocp_utilities.operators import install_operator
-from ocp_resources.resource import get_client
-from ocp_resources.catalog_source import CatalogSource
-from ocp_resources.package_manifest import PackageManifest
-from ocp_resources.pod import Pod
-
-from ocp_resources.data_science_cluster import DataScienceCluster
-from ocp_resources.dsc_initialization import DSCInitialization
-
 from io import StringIO
 
-import yaml
-import time
+import argparse
 import logging
+import os
+import pathlib
 import sys
+import yaml
+
+
+from ocp_resources.catalog_source import CatalogSource
+from ocp_resources.data_science_cluster import DataScienceCluster
+from ocp_resources.dsc_initialization import DSCInitialization
+from ocp_resources.namespace import Namespace
+from ocp_resources.package_manifest import PackageManifest
+from ocp_resources.pod import Pod
+from ocp_resources.resource import get_client
+
+from ocp_utilities.operators import install_operator
+
+from timeout_sampler import TimeoutSampler, TimeoutExpiredError
+
+from trustyai_tests.tests.utils import log_namespace_events, get_num_running_containers, log_namespace_pods
 
 logger: logging.Logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -21,72 +29,66 @@ DEFAULT_REPO = "https://github.com/trustyai-explainability/trustyai-service-oper
 RECHECK_INTERVAL = 5
 
 
+# === UTILITIES ====================================================================================
 def header(text):
-    logger.info("============== {} ==============".format(text))
+    logger.info("")
+    logger.info(f"============== {text} ==============")
 
 
-def wait_for_catalog_sources(operator_data):
+def check_sampler(sampler, success_msg, fail_msg):
+    """Run a timeout sampler, logging success_msg or fail_msg as applicable"""
+    try:
+        for check in sampler:
+            if check:
+                logger.info(success_msg)
+                break
+    except TimeoutExpiredError as e:
+        logger.error(fail_msg)
+        raise e
+
+
+# === OPERATOR INSTALL PRECHECKS ===================================================================
+def wait_for_catalog_sources(client, operator_data):
     """Make sure all requested catalog sources are available"""
     header("Waiting for Catalog Sources")
 
-    client = get_client()
-    catalog_sources = {o["catalogSource"] for o in operator_data}
+    for catalog_source in {o["catalogSource"] for o in operator_data}:
+        sampler = TimeoutSampler(
+            wait_timeout=300,
+            sleep=RECHECK_INTERVAL,
+            func=lambda: catalog_source in [s.name for s in CatalogSource.get(dyn_client=client)],
+            print_func_log=False,
+        )
 
-    for catalog_source in catalog_sources:
-        tries = 0
-        while True:
-            available_sources = [s.name for s in CatalogSource.get(dyn_client=client)]
-            if catalog_source in available_sources:
-                logger.info("{} catalog found".format(catalog_sources))
-                break
-            else:
-                time.sleep(RECHECK_INTERVAL)
-
-            if tries > 300 // RECHECK_INTERVAL:
-                logger.error("Catalog Source {} not found".format(catalog_source))
-                raise TimeoutError("Catalog Source {} not found".format(catalog_source))
-
-            tries += 1
+        check_sampler(sampler, f"{catalog_source} catalog found", f"Timeout: {catalog_source} catalog not found")
 
 
-def wait_for_package_manifests(operator_data):
+def wait_for_package_manifests(client, operator_data):
     """Make sure the package manifest for each requested operator is available"""
     header("Waiting for Package Manifests")
 
-    client = get_client()
-    previous_return_list = None
     for operator in operator_data:
-        tries = 0
-        found = False
-        while not found:
-            # cache return value for later use
-            if tries == 0 and previous_return_list is not None:
-                package_manifests = previous_return_list
-            else:
-                package_manifests = list(PackageManifest.get(dyn_client=client))
-                previous_return_list = package_manifests
+        sampler = TimeoutSampler(
+            wait_timeout=900,
+            sleep=RECHECK_INTERVAL,
+            func=lambda target_name: any(
+                package_manifest.name == target_name for package_manifest in PackageManifest.get(dyn_client=client)
+            ),
+            target_name=operator["name"],
+        )
 
-            for package_manifest in package_manifests:
-                if package_manifest.name == operator["name"]:
-                    logger.info("{} package manifest found".format(operator["name"]))
-                    found = True
-                    break
-
-            if not found:
-                time.sleep(RECHECK_INTERVAL)
-
-            if tries > 900 // RECHECK_INTERVAL:
-                logger.error("Package Manifests for {} not found".format(operator["name"]))
-                raise TimeoutError("Package Manifests for {} not found".format(operator["name"]))
-
-            tries += 1
+        check_sampler(
+            sampler,
+            f"{operator['name']} package manifest found",
+            f"Timeout: {operator['name']} package manifest not found",
+        )
 
 
-def install_operators(operator_data):
+# === OPERATOR INSTALL =============================================================================
+def install_operators(client, operator_data):
     """Install the specified operator"""
     header("Installing Operators")
 
-    client = get_client()
     for operator in operator_data:
         install_operator(
             admin_client=client,
@@ -97,98 +99,125 @@ def install_operators(operator_data):
             operator_namespace=operator["namespace"],
             timeout=600,
             install_plan_approval="Manual",
-            starting_csv="{}.v{}".format(operator["name"], operator["version"]),
+            starting_csv=f"{operator['name']}.v{operator['version']}",
         )
 
 
-def verify_operator_running(operator_data):
+def verify_operator_running(client, operator_data):
     """Make sure all operator pods are running"""
     header("Verifying Operator Pods")
 
-    client = get_client()
-    previous_return_list = None
     for operator in operator_data:
         for target_pod_name in operator["correspondingPods"]:
-            tries = 0
-            found = False
+            sampler = TimeoutSampler(
+                wait_timeout=300,
+                sleep=RECHECK_INTERVAL,
+                func=lambda target_name: any(
+                    target_pod_name in pod.name and get_num_running_containers(pod) == 1
+                    for pod in Pod.get(dyn_client=client, namespace=operator["namespace"])
+                ),
+                target_name=target_pod_name,
+            )
 
-            while not found:
-                # cache return value for later use
-                if tries == 0 and previous_return_list is not None:
-                    running_pods = previous_return_list
-                else:
-                    running_pods = list(Pod.get(dyn_client=client, namespace=operator["namespace"]))
-                    previous_return_list = running_pods
-
-                for pod in running_pods:
-                    num_running_containers = sum([
-                        1 for container in pod.exists.status["containerStatuses"] if container["started"]
-                    ])
-
-                    # check if pod name matches and is running
-                    if target_pod_name in pod.name and num_running_containers == 1:
-                        logger.info("{} pod running".format(target_pod_name))
-                        found = True
-                        break
-
-                if not found:
-                    time.sleep(RECHECK_INTERVAL)
-
-                if tries > RECHECK_INTERVAL // RECHECK_INTERVAL:
-                    logger.error("Timeout waiting for {} pod".format(target_pod_name))
-                    raise TimeoutError("Timeout waiting for {} pod".format(target_pod_name))
-
-                tries += 1
+            check_sampler(
+                sampler, f"{operator['name']} pod running", f"Timeout waiting for {operator['name']} pod to start"
+            )
 
 
-def install_dsci():
+# === ODH INSTALL ==================================================================================
+def create_odh_namespace(client):
+    if not any("opendatahub" == ns.name for ns in Namespace.get()):
+        ns = Namespace(
+            client=client,
+            name="opendatahub",
+            delete_timeout=600,
+        ).deploy()
+        ns.wait_for_status(status=Namespace.Status.ACTIVE, timeout=120)
+
+
+def install_dsci(client):
     """Install a default DSCI"""
     header("Installing DSCI")
 
-    client = get_client()
     dsci = DSCInitialization(client=client, yaml_file="manifests/dsci.yaml")
-    dsci.create()
+    dsci.deploy()
 
 
-def install_datascience_cluster(trustyai_manifests_url):
+def install_datascience_cluster(client, trustyai_manifests_url):
     """Install a DSC that uses the specified manifests url"""
     header("Installing Datascience Cluster")
 
-    logger.info("Using manifests from {}".format(trustyai_manifests_url))
+    logger.info(f"Using manifests from {trustyai_manifests_url}")
     with open("manifests/dsc_template.yaml", "r") as f:
         template = f.read()
     config = template.replace("TRUSTYAI_REPO_PLACEHOLDER", trustyai_manifests_url)
 
-    client = get_client()
     dsc = DataScienceCluster(client=client, yaml_file=StringIO(config))
-    dsc.create()
+    dsc.deploy()
+    dsc.wait_for_status(status=DataScienceCluster.Status.READY)
 
 
-# main function
-def setup_cluster(operator_config_yaml, trustyai_manifests_url):
+# === MAIN =========================================================================================
+def setup_cluster(args):
     # load config info
     try:
+        operator_config_yaml = os.path.join(pathlib.Path(__file__).parent.resolve(), "operators_config.yaml")
         with open(operator_config_yaml, "r") as f:
             operator_data = yaml.load(f, yaml.Loader)
     except FileNotFoundError as e:
-        logger.error("Operator config yaml {} not found:".format(operator_config_yaml))
+        logger.error(f"Operator config yaml {operator_config_yaml} not found:")
         logger.error(e)
         raise e
 
+    client = get_client()
+
     # make sure cluster is ready for operator installation
-    wait_for_catalog_sources(operator_data)
-    wait_for_package_manifests(operator_data)
+    if args.install_operators:
+        wait_for_catalog_sources(client, operator_data)
+        wait_for_package_manifests(client, operator_data)
 
-    # install prereq operators
-    install_operators(operator_data)
-    verify_operator_running(operator_data)
+        # install prereq operators
+        install_operators(client, operator_data)
+        verify_operator_running(client, operator_data)
 
-    # install and setup ODH
-    install_dsci()
-    install_datascience_cluster(trustyai_manifests_url)
+    if args.install_dsc:
+        # create odh namespace
+        create_odh_namespace(client)
+
+        # install and setup ODH
+        install_dsci(client)
+        install_datascience_cluster(client, args.trustyai_manifests_url)
+
+    for namespace in ["opendatahub", "openshift-operators"]:
+        log_namespace_pods(args.artifact_dir, namespace)
+        log_namespace_events(args.artifact_dir, namespace, get_client())
 
 
 if __name__ == "__main__":
-    operator_config_yaml = "setup/operators_config.yaml"
-    trustyai_manifests_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REPO
-    setup_cluster(operator_config_yaml, trustyai_manifests_url)
+    parser = argparse.ArgumentParser(
+        prog="TrustyAI CI Cluster Setup",
+        description="Configure a fresh Openshift cluster in preparation " "for the TrustyAI CI test suite",
+    )
+    parser.add_argument(
+        "--trustyai_manifests_url",
+        help="URL of the TrustyAI manifests tarball. Defaults to `main` if not specified.",
+        default=DEFAULT_REPO,
+    )
+    parser.add_argument(
+        "--install_operators",
+        help="Whether to install the prerequisite operators. Set to false if they are already "
+        "installed on your cluster.",
+        default=True,
+        action="store_false",
+    )
+    parser.add_argument(
+        "--install_dsc",
+        help="Whether to install the ODH DataScienceCluster. Set to false if you already have a "
+        "DataScienceCluster running.",
+        default=True,
+        action="store_false",
+    )
+    parser.add_argument("--artifact_dir", help="Directory where test artifacts are stored.", default="/tmp/")
+    args = parser.parse_args()
+
+    setup_cluster(args)

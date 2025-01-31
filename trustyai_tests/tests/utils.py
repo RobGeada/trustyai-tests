@@ -5,6 +5,7 @@ import os
 import subprocess
 from time import time, sleep
 from typing import Any, List
+import yaml
 
 import kubernetes
 import requests
@@ -14,6 +15,7 @@ from ocp_resources.mariadb_operator import MariadbOperator
 from ocp_resources.namespace import Namespace
 from ocp_resources.pod import Pod
 from ocp_resources.route import Route
+from ocp_resources.event import Event
 from ocp_resources.service_serving_knative_dev import Service
 from ocp_resources.serving_runtime import ServingRuntime
 from ocp_utilities.monitoring import Prometheus
@@ -804,3 +806,41 @@ def wait_for_mariadb_pods(mariadb, timeout: int = 300) -> None:
                 raise TimeoutError(f"Timed out waiting for MariaDB pod {pod.name} to reach Running status")
         else:
             sleep(5)
+
+
+def get_num_running_containers(pod, return_string=False):
+    """Gets the number of running containers in a pod. If return_string, will return it in the form running/total"""
+    containers = [1 if container["started"] else 0 for container in pod.exists.status["containerStatuses"]]
+
+    if return_string:
+        return "{}/{}".format(sum(containers), len(containers))
+    else:
+        return sum(containers)
+
+
+def log_namespace_events(artifacts_dir, namespace, client):
+    # === get events ===
+    event_log = ""
+    for event in Event.get(dyn_client=client, namespace=namespace, timeout=3):
+        event_log += yaml.dump(event["raw_object"])
+        event_log += "\n\n"
+
+    with open(os.path.join(artifacts_dir, "{}-events.txt".format(namespace)), "w") as f:
+        f.write(event_log)
+
+
+def log_namespace_pods(artifacts_dir, namespace):
+    pod_log = ""
+    fmt_str = "{:<100} {:>10} {:>10}\n"
+    pod_status_log = fmt_str.format("NAME", "READY", "STATUS")
+    for pod in Pod.get(namespace=namespace, timeout=3):
+        pod_log += yaml.dump(pod.instance.to_dict())
+        pod_log += "\n\n"
+
+        pod_status_log += fmt_str.format(pod.name, get_num_running_containers(pod), pod.status)
+
+    with open(os.path.join(artifacts_dir, "{}-pods-yamls.txt".format(namespace)), "w") as f:
+        f.write(pod_log)
+
+    with open(os.path.join(artifacts_dir, "{}-get-pods.txt".format(namespace)), "w") as f:
+        f.write(pod_status_log)
