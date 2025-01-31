@@ -1,0 +1,38 @@
+-
+  name: authorino-operator
+  channel: stable
+  catalogSource: community-operators
+  repository: https://github.com/Kuadrant/authorino-operator
+  version: 0.16.0
+  namespace: openshift-operators
+  correspondingPods:
+    - authorino-operator
+-
+  name: serverless-operator
+  channel: stable
+  catalogSource: redhat-operators
+  repository: https://github.com/openshift-knative/serverless-operator
+  version: 1.35.0
+  namespace: openshift-operators
+  correspondingPods:
+    - knative-operator-webhook
+    - knative-openshift
+    - knative-openshift-ingress
+-
+  name: servicemeshoperator
+  channel: stable
+  catalogSource: redhat-operators
+  repository: https://github.com/maistra/istio-operator
+  version: 2.6.3
+  namespace: openshift-operators
+  correspondingPods:
+    - istio-operator
+-
+  name: opendatahub-operator
+  channel: fast
+  catalogSource: community-operators
+  repository: https://github.com/opendatahub-io/opendatahub-operator
+  version: 2.22.0
+  namespace: openshift-operators
+  correspondingPods:
+    - opendatahub-operator

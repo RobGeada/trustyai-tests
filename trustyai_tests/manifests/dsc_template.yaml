@@ -1,0 +1,49 @@
+kind: DataScienceCluster
+apiVersion: datasciencecluster.opendatahub.io/v1
+metadata:
+  labels:
+    app.kubernetes.io/created-by: opendatahub-operator
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: datasciencecluster
+    app.kubernetes.io/part-of: opendatahub-operator
+  name: default-dsc
+spec:
+  components:
+    codeflare:
+      managementState: Removed
+    dashboard:
+      managementState: Removed
+    datasciencepipelines:
+      managementState: Removed
+    kserve:
+      managementState: Managed
+      nim:
+        managementState: Removed
+      serving:
+        ingressGateway:
+          certificate:
+            type: OpenshiftDefaultIngress
+        managementState: Managed
+        name: knative-serving
+    kueue:
+      managementState: Removed
+    modelmeshserving:
+      managementState: Managed
+    modelregistry:
+      managementState: Removed
+      registriesNamespace: odh-model-registries
+    ray:
+      managementState: Removed
+    trainingoperator:
+      managementState: Removed
+    trustyai:
+      managementState: Managed
+      devflags:
+        manifests:
+          - contextDir: config
+            sourcePath: ''
+            uri: TRUSTYAI_REPO_PLACEHOLDER
+    workbenches:
+      managementState: Removed
+
