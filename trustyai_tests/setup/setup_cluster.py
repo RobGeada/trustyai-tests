@@ -167,17 +167,16 @@ def install_datascience_cluster(trustyai_manifests_url):
     dsc.create()
 
 
-if __name__ == "__main__":
+# main function
+def cluster_setup(operator_config_yaml, trustyai_manifests_url):
     # load config info
     try:
-        with (open("setup/operators_config.yaml", 'r') as f):
+        with (open(operator_config_yaml, 'r') as f):
             operator_data = yaml.load(f, yaml.Loader)
     except FileNotFoundError as e:
         logger.error(e)
         logger.error("Operator config yaml not found, make sure your working directory is trustyai-tests/")
         raise e
-
-    repo = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REPO
 
     # make sure cluster is ready for operator installation
     wait_for_catalog_sources(operator_data)
@@ -189,4 +188,10 @@ if __name__ == "__main__":
 
     # install and setup ODH
     install_dsci()
-    install_datascience_cluster(repo)
+    install_datascience_cluster(trustyai_manifests_url)
+
+
+if __name__ == "__main__":
+    operator_config_yaml = "setup/operators_config.yaml"
+    trustyai_manifests_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REPO
+    cluster_setup(operator_config_yaml, trustyai_manifests_url)
