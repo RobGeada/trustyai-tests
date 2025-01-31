@@ -18,6 +18,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 DEFAULT_REPO = "https://github.com/trustyai-explainability/trustyai-service-operator/tarball/main"
+RECHECK_INTERVAL = 5
 
 
 def header(text):
@@ -39,9 +40,9 @@ def wait_for_catalog_sources(operator_data):
                 logger.info("{} catalog found".format(catalog_sources))
                 break
             else:
-                time.sleep(5)
+                time.sleep(RECHECK_INTERVAL)
 
-            if tries > 300 // 5:
+            if tries > 300 // RECHECK_INTERVAL:
                 logger.error("Catalog Source {} not found".format(catalog_source))
                 raise TimeoutError("Catalog Source {} not found".format(catalog_source))
 
@@ -73,9 +74,9 @@ def wait_for_package_manifests(operator_data):
                     break
 
             if not found:
-                time.sleep(10)
+                time.sleep(RECHECK_INTERVAL)
 
-            if tries > 900 // 5:
+            if tries > 900 // RECHECK_INTERVAL:
                 logger.error("Package Manifests for {} not found".format(operator['name']))
                 raise TimeoutError("Package Manifests for {} not found".format(operator['name']))
 
@@ -134,9 +135,9 @@ def verify_operator_running(operator_data):
                         break
 
                 if not found:
-                    time.sleep(10)
+                    time.sleep(RECHECK_INTERVAL)
 
-                if tries > 300 // 5:
+                if tries > RECHECK_INTERVAL // RECHECK_INTERVAL:
                     logger.error("Timeout waiting for {} pod".format(target_pod_name))
                     raise TimeoutError("Timeout waiting for {} pod".format(target_pod_name))
 
