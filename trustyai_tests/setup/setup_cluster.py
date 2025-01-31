@@ -170,8 +170,8 @@ def setup_cluster(operator_config_yaml, trustyai_manifests_url):
         with (open(operator_config_yaml, 'r') as f):
             operator_data = yaml.load(f, yaml.Loader)
     except FileNotFoundError as e:
+        logger.error("Operator config yaml {} not found:".format(operator_config_yaml))
         logger.error(e)
-        logger.error("Operator config yaml not found, make sure your working directory is trustyai-tests/")
         raise e
 
     # make sure cluster is ready for operator installation
