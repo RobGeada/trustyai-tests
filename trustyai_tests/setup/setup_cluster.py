@@ -182,7 +182,7 @@ def setup_cluster(args):
         install_operators(client, operator_data)
         verify_operator_running(client, operator_data)
 
-    if args.skip_dsc_installation:
+    if not args.skip_dsc_installation:
         # create odh namespace
         create_odh_namespace(client)
 
