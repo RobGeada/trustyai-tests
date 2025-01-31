@@ -2,5 +2,5 @@
 
 ## Running Cluster Setup
 * `poetry install .`
-* `poetry run python setup/setup_cluster.py `
+* `poetry run python trustyai_tests/setup/setup_cluster.py `
 

@@ -56,7 +56,7 @@ def wait_for_catalog_sources(client, operator_data):
         sampler = TimeoutSampler(
             wait_timeout=300,
             sleep=RECHECK_INTERVAL,
-            func=lambda: catalog_source in [s.name for s in CatalogSource.get(dyn_client=client)],
+            func=lambda: any(catalog_source == s.name for s in CatalogSource.get(dyn_client=client)),
             print_func_log=False,
         )
 
@@ -74,6 +74,7 @@ def wait_for_package_manifests(client, operator_data):
             func=lambda target_name: any(
                 package_manifest.name == target_name for package_manifest in PackageManifest.get(dyn_client=client)
             ),
+            print_func_log=False,
             target_name=operator["name"],
         )
 
@@ -116,6 +117,7 @@ def verify_operator_running(client, operator_data):
                     target_pod_name in pod.name and get_num_running_containers(pod) == 1
                     for pod in Pod.get(dyn_client=client, namespace=operator["namespace"])
                 ),
+                print_func_log=False,
                 target_name=target_pod_name,
             )
 
@@ -139,7 +141,7 @@ def install_dsci(client):
     """Install a default DSCI"""
     header("Installing DSCI")
 
-    dsci = DSCInitialization(client=client, yaml_file="manifests/dsci.yaml")
+    dsci = DSCInitialization(client=client, yaml_file="trustyai_tests/manifests/dsci.yaml")
     dsci.deploy()
 
 
@@ -148,7 +150,7 @@ def install_datascience_cluster(client, trustyai_manifests_url):
     header("Installing Datascience Cluster")
 
     logger.info(f"Using manifests from {trustyai_manifests_url}")
-    with open("manifests/dsc_template.yaml", "r") as f:
+    with open("trustyai_tests/manifests/dsc_template.yaml", "r") as f:
         template = f.read()
     config = template.replace("TRUSTYAI_REPO_PLACEHOLDER", trustyai_manifests_url)
 
