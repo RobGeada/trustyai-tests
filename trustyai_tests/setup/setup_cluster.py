@@ -27,9 +27,9 @@ def header(text):
 
 def wait_for_catalog_sources(operator_data):
     """Make sure all requested catalog sources are available"""
+    header("Waiting for Catalog Sources")
 
     client = get_client()
-    header("Waiting for Catalog Sources")
     catalog_sources = {o['catalogSource'] for o in operator_data}
 
     for catalog_source in catalog_sources:
@@ -51,10 +51,9 @@ def wait_for_catalog_sources(operator_data):
 
 def wait_for_package_manifests(operator_data):
     """Make sure the package manifest for each requested operator is available"""
-
-    client = get_client()
     header("Waiting for Package Manifests")
 
+    client = get_client()
     previous_return_list = None
     for operator in operator_data:
         tries = 0
@@ -85,11 +84,9 @@ def wait_for_package_manifests(operator_data):
 
 def install_operators(operator_data):
     """Install the specified operator"""
-
     header("Installing Operators")
 
     client = get_client()
-
     for operator in operator_data:
         install_operator(
             admin_client=client,
@@ -106,10 +103,9 @@ def install_operators(operator_data):
 
 def verify_operator_running(operator_data):
     """Make sure all operator pods are running"""
-
-    client = get_client()
     header("Verifying Operator Pods")
 
+    client = get_client()
     previous_return_list = None
     for operator in operator_data:
         for target_pod_name in operator['correspondingPods']:
@@ -146,8 +142,8 @@ def verify_operator_running(operator_data):
 
 def install_dsci():
     """Install a default DSCI"""
-
     header("Installing DSCI")
+
     client = get_client()
     dsci = DSCInitialization(client=client, yaml_file="manifests/dsci.yaml")
     dsci.create()
@@ -155,8 +151,8 @@ def install_dsci():
 
 def install_datascience_cluster(trustyai_manifests_url):
     """Install a DSC that uses the specified manifests url"""
-
     header("Installing Datascience Cluster")
+
     logger.info("Using manifests from {}".format(trustyai_manifests_url))
     with open("manifests/dsc_template.yaml", "r") as f:
         template = f.read()
