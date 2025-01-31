@@ -168,7 +168,7 @@ def install_datascience_cluster(trustyai_manifests_url):
 
 
 # main function
-def cluster_setup(operator_config_yaml, trustyai_manifests_url):
+def setup_cluster(operator_config_yaml, trustyai_manifests_url):
     # load config info
     try:
         with (open(operator_config_yaml, 'r') as f):
@@ -194,4 +194,4 @@ def cluster_setup(operator_config_yaml, trustyai_manifests_url):
 if __name__ == "__main__":
     operator_config_yaml = "setup/operators_config.yaml"
     trustyai_manifests_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REPO
-    cluster_setup(operator_config_yaml, trustyai_manifests_url)
+    setup_cluster(operator_config_yaml, trustyai_manifests_url)
