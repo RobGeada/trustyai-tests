@@ -192,7 +192,7 @@ def setup_cluster(args):
 
     for namespace in ["opendatahub", "openshift-operators"]:
         log_namespace_pods(args.artifact_dir, namespace)
-        log_namespace_events(args.artifact_dir, namespace, get_client())
+        log_namespace_events(args.artifact_dir, namespace, client)
 
 
 if __name__ == "__main__":
