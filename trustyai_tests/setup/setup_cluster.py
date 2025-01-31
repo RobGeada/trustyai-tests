@@ -1,4 +1,3 @@
-import kubernetes.config
 from ocp_utilities.operators import install_operator
 from ocp_resources.resource import get_client
 from ocp_resources.catalog_source import CatalogSource
@@ -43,8 +42,8 @@ def wait_for_catalog_sources(operator_data):
                 time.sleep(5)
 
             if tries > 300 // 5:
-                logger.error("Catalog Source {} not found".format(cs))
-                raise TimeoutError("Catalog Source {} not found".format(cs))
+                logger.error("Catalog Source {} not found".format(catalog_source))
+                raise TimeoutError("Catalog Source {} not found".format(catalog_source))
 
             tries += 1
 
