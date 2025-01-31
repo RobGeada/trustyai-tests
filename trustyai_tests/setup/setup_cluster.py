@@ -220,6 +220,4 @@ if __name__ == "__main__":
     parser.add_argument("--artifact_dir", help="Directory where test artifacts are stored.", default="/tmp/")
     args = parser.parse_args()
 
-    #setup_cluster(args)
-
-    install_datascience_cluster(get_client(), args.trustyai_manifests_url)
+    setup_cluster(args)
