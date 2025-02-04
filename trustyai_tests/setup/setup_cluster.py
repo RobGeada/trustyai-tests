@@ -164,8 +164,11 @@ def setup_cluster(args):
     # load config info
     try:
         operator_config_yaml = os.path.join(pathlib.Path(__file__).parent.resolve(), "operators_config.yaml")
-        with open(operator_config_yaml, "r") as f:
-            operator_data = yaml.load(f, yaml.Loader)
+        with open(operator_config_yaml, "r") as fr:
+            operator_data = yaml.load(fr, yaml.Loader)
+            fr.seek(0)
+            with open(os.path.join(args.artifact_dir, "operators_config.yaml", "w")) as fw:
+                fw.write(fr.read())
     except FileNotFoundError as e:
         logger.error(f"Operator config yaml {operator_config_yaml} not found:")
         logger.error(e)

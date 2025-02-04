@@ -45,3 +45,6 @@ markers = [
     "kubernetes: marks tests to be run in Kubernetes clusters.",
     "heavy: marks tests that are resource intensive."
 ]
+
+[pytest]
+log_cli=true

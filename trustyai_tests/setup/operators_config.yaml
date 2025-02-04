@@ -33,6 +33,6 @@
   catalogSource: community-operators
   repository: https://github.com/opendatahub-io/opendatahub-operator
   version: 2.20.0
-  namespace: openshift-operators
+  namespace: openshift-operators-odh
   correspondingPods:
     - opendatahub-operator
