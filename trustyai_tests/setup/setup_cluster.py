@@ -6,7 +6,7 @@ import os
 import pathlib
 import sys
 import yaml
-
+from multiprocessing import Process
 
 from ocp_resources.catalog_source import CatalogSource
 from ocp_resources.data_science_cluster import DataScienceCluster
@@ -90,18 +90,22 @@ def install_operators(client, operator_data):
     """Install the specified operator"""
     header("Installing Operators")
 
+    processes = []
     for operator in operator_data:
-        install_operator(
-            admin_client=client,
-            target_namespaces=[],
-            name=operator["name"],
-            channel=operator["channel"],
-            source=operator["catalogSource"],
-            operator_namespace=operator["namespace"],
-            timeout=600,
-            install_plan_approval="Manual",
-            starting_csv=f"{operator['name']}.v{operator['version']}",
-        )
+        p = Process(target=install_operator,
+                              kwargs={
+                                  "admin_client": client,
+                                  "target_namespaces": [],
+                                  "name": operator["name"],
+                                  "channel": operator["channel"],
+                                  "source": operator["catalogSource"],
+                                  "operator_namespace": operator["namespace"],
+                                  "timeout": 600,
+                                  "install_plan_approval": "Manual",
+                                  "starting_csv": f"{operator['name']}.v{operator['version']}"
+                              })
+        processes.append(p)
+    [p.join() for p in processes]
 
 
 def verify_operator_running(client, operator_data):
