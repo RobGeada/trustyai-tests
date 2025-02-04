@@ -104,6 +104,7 @@ def install_operators(client, operator_data):
                                   "install_plan_approval": "Manual",
                                   "starting_csv": f"{operator['name']}.v{operator['version']}"
                               })
+        p.start()
         processes.append(p)
     [p.join() for p in processes]
 
