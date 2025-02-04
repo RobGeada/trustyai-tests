@@ -161,7 +161,7 @@ def install_datascience_cluster(client, trustyai_manifests_url):
 
     dsc = DataScienceCluster(client=client, yaml_file=StringIO(config))
     dsc.deploy()
-    dsc.wait_for_status(status=DataScienceCluster.Status.READY, timeout=300)
+    dsc.wait_for_status(status=DataScienceCluster.Status.READY, timeout=630)
 
 
 # === MAIN =========================================================================================
